@@ -24,45 +24,63 @@ SUBCOMMANDS:
     help    Prints this message or the help of the given subcommand(s)
 "#;
 
-// /// When no subcommand is specified, the migration engine will default to starting as a JSON-RPC
-// /// server over stdio.
-// #[derive(Debug, StructOpt)]
-// #[structopt(version = env!("GIT_HASH"))]
-// struct MigrationEngineCli {
-//     /// Path to the datamodel
-//     #[structopt(short = "d", long, name = "FILE")]
-//     datamodel: Option<String>,
-//     #[structopt(subcommand)]
-//     cli_subcommand: Option<SubCommand>,
-// }
-
-// #[derive(Debug, StructOpt)]
-// enum SubCommand {
-//     /// Doesn't start a server, but allows running specific commands against Prisma.
-//     #[structopt(name = "cli")]
-//     Cli(commands::Cli),
-// }
-
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), pico_args::Error> {
     set_panic_hook();
     logger::init_logger();
 
-    let args = pico_args::Arguments::from_env();
+    let mut args = pico_args::Arguments::from_env();
 
-    match input.cli_subcommand {
-        None => {
-            if let Some(datamodel_location) = input.datamodel.as_ref() {
-                start_engine(datamodel_location).await
-            } else {
-                panic!("Missing --datamodel");
-            }
-        }
-        Some(SubCommand::Cli(cli_command)) => {
-            tracing::info!(git_hash = env!("GIT_HASH"), "Starting migration engine CLI");
-            cli_command.run().await;
-        }
+    if args.contains("-V") || args.contains("--version") {
+        eprintln!("{}", env!("GIT_HASH"));
+        return Ok(());
     }
+
+    match args.subcommand()?.as_deref() {
+        None => {
+            if args.contains("-h") || args.contains("--help") {
+                eprintln!("{}", HELPTEXT);
+                return Ok(());
+            }
+
+            let datamodel_location = match (
+                args.opt_value_from_str::<_, String>("--datamodel")?,
+                args.opt_value_from_str("-d")?,
+            ) {
+                (Some(arg), None) | (None, Some(arg)) => arg,
+                (Some(_), Some(_)) => {
+                    eprintln!(
+                        "Both -d and --datamodel were provided. Please provide only one.\n\n{}",
+                        HELPTEXT
+                    );
+                    std::process::exit(1);
+                }
+                (None, None) => {
+                    eprintln!("The required --datamodel argument is missing.\n\n{}", HELPTEXT);
+                    std::process::exit(1);
+                }
+            };
+
+            start_engine(&datamodel_location).await
+        }
+        Some("cli") => {
+            tracing::info!(git_hash = env!("GIT_HASH"), "Starting migration engine CLI");
+            commands::run_cli(&mut args).await?;
+        }
+        Some(other) => {
+            eprintln!("Unknown subcommand: {}\n\n{}", other, HELPTEXT);
+            std::process::exit(1);
+        }
+    };
+
+    let remaining_args = args.finish();
+
+    if let Some(arg) = remaining_args.get(0) {
+        eprintln!("Unknown argument: {}", arg.to_string_lossy());
+        std::process::exit(1);
+    }
+
+    Ok(())
 }
 
 fn set_panic_hook() {
