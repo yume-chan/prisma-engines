@@ -5,33 +5,50 @@ mod logger;
 
 use crate::logger::log_error_and_exit;
 use migration_core::rpc_api;
-use structopt::StructOpt;
 
-/// When no subcommand is specified, the migration engine will default to starting as a JSON-RPC
-/// server over stdio.
-#[derive(Debug, StructOpt)]
-#[structopt(version = env!("GIT_HASH"))]
-struct MigrationEngineCli {
-    /// Path to the datamodel
-    #[structopt(short = "d", long, name = "FILE")]
-    datamodel: Option<String>,
-    #[structopt(subcommand)]
-    cli_subcommand: Option<SubCommand>,
-}
+const HELPTEXT: &str = r#"
+When no subcommand is specified, the migration engine will default to starting as a JSON-RPC server over stdio
 
-#[derive(Debug, StructOpt)]
-enum SubCommand {
-    /// Doesn't start a server, but allows running specific commands against Prisma.
-    #[structopt(name = "cli")]
-    Cli(commands::Cli),
-}
+USAGE:
+    migration-engine [OPTIONS] [SUBCOMMAND]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -d, --datamodel <FILE>    Path to the datamodel
+
+SUBCOMMANDS:
+    cli     Doesn't start a server, but allows running specific commands against Prisma
+    help    Prints this message or the help of the given subcommand(s)
+"#;
+
+// /// When no subcommand is specified, the migration engine will default to starting as a JSON-RPC
+// /// server over stdio.
+// #[derive(Debug, StructOpt)]
+// #[structopt(version = env!("GIT_HASH"))]
+// struct MigrationEngineCli {
+//     /// Path to the datamodel
+//     #[structopt(short = "d", long, name = "FILE")]
+//     datamodel: Option<String>,
+//     #[structopt(subcommand)]
+//     cli_subcommand: Option<SubCommand>,
+// }
+
+// #[derive(Debug, StructOpt)]
+// enum SubCommand {
+//     /// Doesn't start a server, but allows running specific commands against Prisma.
+//     #[structopt(name = "cli")]
+//     Cli(commands::Cli),
+// }
 
 #[tokio::main]
 async fn main() {
     set_panic_hook();
     logger::init_logger();
 
-    let input = MigrationEngineCli::from_args();
+    let args = pico_args::Arguments::from_env();
 
     match input.cli_subcommand {
         None => {
