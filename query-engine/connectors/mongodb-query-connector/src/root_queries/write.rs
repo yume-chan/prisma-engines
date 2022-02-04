@@ -16,7 +16,7 @@ use mongodb::{
 };
 use prisma_models::{ModelRef, PrismaValue, SelectionResult};
 use std::{collections::HashMap, convert::TryInto};
-use update_utils::{IntoUpdateDocumentExtension, IntoUpdateOperationExtension};
+use update_utils::IntoUpdateDocumentExtension;
 
 /// Create a single record to the database resulting in a
 /// `RecordProjection` as an identifier pointing to the just-created document.
@@ -167,9 +167,8 @@ pub async fn update_records<'conn>(
 
     for (field, write_op) in fields {
         let field_path = FieldPath::new_from_segment(&field);
-        let update_ops = write_op.into_update_ops(&field, field_path)?.into_update_docs()?;
 
-        update_docs.extend(update_ops);
+        update_docs.extend(write_op.into_update_docs(&field, field_path)?);
     }
 
     if !update_docs.is_empty() {
