@@ -1,13 +1,12 @@
 mod helpers;
 
-use crate::{dml, load_sources, Datasource, Diagnostics, ParserDatabase};
+use crate::{load_sources, Datasource, Diagnostics, ParserDatabase};
 use datamodel_connector::Span;
-use enumflags2::BitFlags;
 use helpers::*;
 use parser_database::walkers;
 use pest::{iterators::Pair, Parser};
 use schema_ast::{
-    ast::{self, SchemaAst},
+    ast,
     parser::{PrismaDatamodelParser, Rule},
     renderer::*,
 };
@@ -18,9 +17,7 @@ pub fn reformat(source: &str, indent_width: usize) -> Result<String, &str> {
     Reformatter::new(source).reformat_internal(indent_width)
 }
 
-fn parse_datamodel_for_formatter(
-    ast: ast::SchemaAst,
-) -> Result<(ParserDatabase, dml::Datamodel, Vec<Datasource>), Diagnostics> {
+fn parse_datamodel_for_formatter(ast: ast::SchemaAst) -> Result<(ParserDatabase, Vec<Datasource>), Diagnostics> {
     let mut diagnostics = diagnostics::Diagnostics::new();
     let datasources = load_sources(&ast, Default::default(), &mut diagnostics);
     let db = parser_database::ParserDatabase::new(ast, &mut diagnostics);
@@ -30,8 +27,7 @@ fn parse_datamodel_for_formatter(
         .map(|ds| (ds.active_connector, ds.referential_integrity()))
         .unwrap_or((&datamodel_connector::EmptyDatamodelConnector, Default::default()));
 
-    let datamodel = crate::transform::ast_to_dml::LiftAstToDml::new(&db, connector, referential_integrity).lift();
-    Ok((db, datamodel, datasources))
+    Ok((db, datasources))
 }
 
 struct Reformatter<'a> {
@@ -45,7 +41,7 @@ impl<'a> Reformatter<'a> {
     fn new(input: &'a str) -> Self {
         let info = crate::parse_schema_ast(input).and_then(parse_datamodel_for_formatter);
         match info {
-            Ok((db, _datamodel, mut datasources)) => {
+            Ok((db, mut datasources)) => {
                 // let schema_ast = db.ast();
                 // let datasource = datasources.pop();
                 let mut missing_fields = Vec::new();
@@ -75,33 +71,6 @@ impl<'a> Reformatter<'a> {
                 missing_fields: Vec::new(),
             },
         }
-    }
-
-    // this finds all auto generated fields, that are added during auto generation AND are missing from the original input.
-    fn find_all_missing_fields(
-        schema_ast: &SchemaAst,
-        datamodel: &dml::Datamodel,
-        datasource: Option<&Datasource>,
-    ) -> Vec<MissingField> {
-        let lowerer = crate::transform::dml_to_ast::LowerDmlToAst::new(datasource, BitFlags::empty());
-        let mut result = Vec::new();
-
-        for model in datamodel.models() {
-            let ast_model = schema_ast.find_model(&model.name).unwrap();
-
-            for field in model.fields() {
-                if !ast_model.fields.iter().any(|f| f.name.name == field.name()) {
-                    let ast_field = lowerer.lower_field(model, field, datamodel);
-
-                    result.push(MissingField {
-                        model: model.name.clone(),
-                        field: ast_field,
-                    });
-                }
-            }
-        }
-
-        result
     }
 
     fn reformat_internal(self, indent_width: usize) -> Result<String, &'a str> {
@@ -997,6 +966,47 @@ fn push_inline_relation_missing_arguments(
             walkers::ReferencingFields::Concrete(_) => unreachable!(),
             walkers::ReferencingFields::NA => (),
             walkers::ReferencingFields::Inferred(inferred_fields) => {
+                let relation_field = ast::Field {
+                    field_type: ast::FieldType::Supported(ast::Identifier::new(
+                        inline_relation.referenced_model().name(),
+                    )),
+                    name: ast::Identifier::new(inline_relation.referenced_model().name()),
+                    arity: ast::FieldArity::Optional,
+                    attributes: vec![ast::Attribute {
+                        name: ast::Identifier::new("relation"),
+                        arguments: ast::ArgumentsList {
+                            arguments: vec![
+                                ast::Argument {
+                                    name: Some(ast::Identifier::new("fields")),
+                                    value: ast::Expression::Array(
+                                        inferred_fields
+                                            .iter()
+                                            .map(|f| ast::Expression::StringValue(f.name.to_owned(), Span::empty()))
+                                            .collect(),
+                                        Span::empty(),
+                                    ),
+                                    span: Span::empty(),
+                                },
+                                ast::Argument {
+                                    name: Some(ast::Identifier::new("references")),
+                                    value: ast::Expression::Array(Vec::new(), Span::empty()),
+                                    span: Span::empty(),
+                                },
+                            ],
+                            empty_arguments: Vec::new(),
+                            trailing_comma: None,
+                        },
+                        span: Span::empty(),
+                    }],
+                    documentation: None,
+                    span: Span::empty(),
+                    is_commented_out: false,
+                };
+
+                fields.push(MissingField {
+                    model: inline_relation.referencing_model().name().to_owned(),
+                    field: relation_field,
+                });
                 for field in &inferred_fields {
                     fields.push(MissingField {
                         model: inline_relation.referencing_model().name().to_owned(),
@@ -1016,12 +1026,6 @@ fn push_inline_relation_missing_arguments(
                         },
                     })
                 }
-
-                let relation_field = ast::Field {
-                    field_type: ast::FieldType::Supported(ast::Identifier::new(
-                        inline_relation.referenced_model().name(),
-                    )),
-                };
             }
         }
     }
