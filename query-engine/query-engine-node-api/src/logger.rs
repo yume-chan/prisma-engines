@@ -5,12 +5,12 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use tracing::{
     field::{Field, Visit},
-    level_filters::LevelFilter,
-    Dispatch, Level, Subscriber,
+    level_filters::LevelFilter, Level, Subscriber, dispatcher::DefaultGuard,
 };
 use tracing_subscriber::{
     filter::{filter_fn, FilterExt},
     layer::SubscriberExt,
+    util::SubscriberInitExt,
     Layer, Registry,
 };
 
@@ -18,7 +18,7 @@ pub(crate) fn create_log_dispatch(
     log_queries: bool,
     log_level: LevelFilter,
     log_callback: ThreadsafeFunction<String>,
-) -> Dispatch {
+) -> DefaultGuard {
     // is a sql query?
     let is_sql_query = filter_fn(|meta| {
         meta.target() == "quaint::connector::metrics" && meta.fields().iter().any(|f| f.name() == "query")
@@ -36,8 +36,11 @@ pub(crate) fn create_log_dispatch(
     };
 
     let logger = CallbackLayer::new(log_callback).with_filter(filters);
+    let collector = Registry::default().with(logger);
 
-    Dispatch::new(Registry::default().with(logger))
+    collector.set_default()
+
+    //Dispatch::new(Registry::default().with(logger))
 }
 
 pub struct JsonVisitor<'a> {

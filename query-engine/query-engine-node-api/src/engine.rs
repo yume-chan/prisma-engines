@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::RwLock;
-use tracing::{instrument::WithSubscriber, warn, Dispatch, Level};
+use tracing::{warn, Level, dispatcher::DefaultGuard};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::filter::LevelFilter;
 
@@ -24,7 +24,7 @@ use napi_derive::napi;
 #[napi]
 pub struct QueryEngine {
     inner: RwLock<Inner>,
-    logger: Dispatch,
+    __collector_guard: DefaultGuard,
 }
 
 /// The state of the engine.
@@ -198,7 +198,7 @@ impl QueryEngine {
 
         Ok(Self {
             inner: RwLock::new(Inner::Builder(builder)),
-            logger: logger::create_log_dispatch(log_queries, log_level, log_callback),
+            __collector_guard: logger::create_log_dispatch(log_queries, log_level, log_callback),
         })
     }
 
@@ -246,7 +246,6 @@ impl QueryEngine {
                 env: builder.env.clone(),
             }) as crate::Result<ConnectedEngine>
         }
-        .with_subscriber(self.logger.clone())
         .await?;
 
         *inner = Inner::Connected(engine);
@@ -296,7 +295,6 @@ impl QueryEngine {
 
             Ok(serde_json::to_string(&response)?)
         }
-        .with_subscriber(self.logger.clone())
         .await
     }
 
@@ -322,7 +320,6 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
-        .with_subscriber(self.logger.clone())
         .await
     }
 
@@ -343,7 +340,6 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
-        .with_subscriber(self.logger.clone())
         .await
     }
 
@@ -364,7 +360,6 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
-        .with_subscriber(self.logger.clone())
         .await
     }
 
