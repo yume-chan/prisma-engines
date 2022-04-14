@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::RwLock;
-use tracing::{warn, Level, dispatcher::DefaultGuard};
+use tracing::{warn, Level, dispatcher::DefaultGuard, instrument::WithSubscriber, info};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::filter::LevelFilter;
 
@@ -209,6 +209,7 @@ impl QueryEngine {
         let builder = inner.as_builder()?;
 
         let engine = async move {
+            info!("hi");
             // We only support one data source & generator at the moment, so take the first one (default not exposed yet).
             let data_source = builder
                 .config
@@ -246,6 +247,7 @@ impl QueryEngine {
                 env: builder.env.clone(),
             }) as crate::Result<ConnectedEngine>
         }
+        .with_current_subscriber()
         .await?;
 
         *inner = Inner::Connected(engine);
@@ -295,6 +297,7 @@ impl QueryEngine {
 
             Ok(serde_json::to_string(&response)?)
         }
+        .with_current_subscriber()
         .await
     }
 
@@ -320,6 +323,7 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
+        .with_current_subscriber()
         .await
     }
 
@@ -340,6 +344,7 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
+        .with_current_subscriber()
         .await
     }
 
@@ -360,6 +365,7 @@ impl QueryEngine {
                 Err(err) => Ok(map_known_error(err)?),
             }
         }
+        .with_current_subscriber()
         .await
     }
 
