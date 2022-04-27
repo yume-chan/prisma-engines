@@ -4,6 +4,7 @@ mod args;
 mod attr_map;
 mod connector_test;
 mod relation_link_test;
+mod schema_drift_test;
 mod test_suite;
 mod utils;
 
@@ -13,6 +14,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use query_tests_setup::TestError;
 use relation_link_test::*;
+use schema_drift_test::*;
 use test_suite::*;
 
 #[proc_macro_attribute]
@@ -28,6 +30,13 @@ pub fn connector_test(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn relation_link_test(attr: TokenStream, input: TokenStream) -> TokenStream {
     relation_link_test_impl(attr, input)
+}
+
+/// Creates two runners: One for schema A and one for schema B, however, only schema A is set up and migrated.
+/// Schema B is the "drift" and allows to query against
+#[proc_macro_attribute]
+pub fn schema_drift_test(attr: TokenStream, input: TokenStream) -> TokenStream {
+    schema_drift_test_impl(attr, input)
 }
 
 trait IntoDarlingError<T> {

@@ -6,6 +6,7 @@ mod filter;
 mod interface;
 mod join;
 mod logger;
+mod model_ext;
 mod orderby;
 mod output_meta;
 mod projection;

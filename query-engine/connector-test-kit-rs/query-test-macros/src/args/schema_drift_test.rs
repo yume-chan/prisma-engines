@@ -3,15 +3,15 @@ use darling::FromMeta;
 use query_tests_setup::ConnectorTag;
 
 #[derive(Debug, FromMeta)]
-pub struct ConnectorTestArgs {
+pub struct SchemaDriftArgs {
     #[darling(default)]
     pub suite: Option<String>,
 
     #[darling(default)]
-    pub schema: Option<SchemaHandler>,
+    pub schema_a: Option<SchemaHandler>,
 
     #[darling(default)]
-    pub second_schema: Option<SchemaHandler>,
+    pub schema_b: Option<SchemaHandler>,
 
     #[darling(default)]
     pub only: OnlyConnectorTags,
@@ -23,13 +23,13 @@ pub struct ConnectorTestArgs {
     pub capabilities: RunOnlyForCapabilities,
 }
 
-impl ConnectorTestArgs {
+impl SchemaDriftArgs {
     pub fn validate(&self, on_module: bool) -> Result<(), darling::Error> {
         validate_suite(&self.suite, on_module)?;
 
-        if self.schema.is_none() && !on_module {
+        if self.schema_a.is_none() || self.schema_b.is_none() {
             return Err(darling::Error::custom(
-                "A schema annotation on either the test mod (#[test_suite(schema(handler))]) or the test (schema(handler)) is required.",
+                "A `schema_a` and `schema_b` annotation on the test (`schema_a(handler), schema_b(handler)`) is required.",
             ));
         }
 

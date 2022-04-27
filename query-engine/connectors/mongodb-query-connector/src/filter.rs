@@ -1,4 +1,4 @@
-use crate::{error::MongoError, join::JoinStage, IntoBson};
+use crate::{error::MongoError, join::JoinStage, model_ext::ScalarFieldExt, IntoBson};
 use connector_interface::{
     AggregationFilter, CompositeCondition, CompositeFilter, Filter, OneRelationIsNullFilter, QueryMode, RelationFilter,
     ScalarCompare, ScalarCondition, ScalarFilter, ScalarListFilter, ScalarProjection,
@@ -199,38 +199,45 @@ fn default_scalar_filter(
     is_count: bool,
 ) -> crate::Result<Document> {
     let field_name = prefix.render_with(field.db_name().to_owned());
+
+    let field_part: Bson = if field.is_object_id() {
+        doc! { "$toObjectId": field_name.clone() }.into()
+    } else {
+        field_name.clone().into()
+    };
+
     let is_set_cond = matches!(&condition, ScalarCondition::IsSet(_));
 
     let filter_doc = match condition {
         ScalarCondition::Equals(val) => {
-            doc! { "$eq": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$eq": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
         ScalarCondition::NotEquals(val) => {
-            doc! { "$ne": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$ne": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
-        ScalarCondition::Contains(val) => regex_match(&field_name, field, ".*", val, ".*", false)?,
+        ScalarCondition::Contains(val) => regex_match(&field_part, field, ".*", val, ".*", false)?,
         ScalarCondition::NotContains(val) => {
-            doc! { "$not": regex_match(&field_name, field, ".*", val, ".*", false)? }
+            doc! { "$not": regex_match(&field_part, field, ".*", val, ".*", false)? }
         }
-        ScalarCondition::StartsWith(val) => regex_match(&field_name, field, "^", val, "", false)?,
+        ScalarCondition::StartsWith(val) => regex_match(&field_part, field, "^", val, "", false)?,
         ScalarCondition::NotStartsWith(val) => {
-            doc! { "$not": regex_match(&field_name, field, "^", val, "", false)? }
+            doc! { "$not": regex_match(&field_part, field, "^", val, "", false)? }
         }
-        ScalarCondition::EndsWith(val) => regex_match(&field_name, field, "", val, "$", false)?,
+        ScalarCondition::EndsWith(val) => regex_match(&field_part, field, "", val, "$", false)?,
         ScalarCondition::NotEndsWith(val) => {
-            doc! { "$not": regex_match(&field_name, field, "", val, "$", false)? }
+            doc! { "$not": regex_match(&field_part, field, "", val, "$", false)? }
         }
         ScalarCondition::LessThan(val) => {
-            doc! { "$lt": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$lt": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
         ScalarCondition::LessThanOrEquals(val) => {
-            doc! { "$lte": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$lte": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
         ScalarCondition::GreaterThan(val) => {
-            doc! { "$gt": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$gt": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
         ScalarCondition::GreaterThanOrEquals(val) => {
-            doc! { "$gte": [&field_name, into_bson_coerce_count(field, val, is_count)?] }
+            doc! { "$gte": [&field_part, into_bson_coerce_count(field, val, is_count)?] }
         }
         // Todo: The nested list unpack looks like a bug somewhere.
         //       Likely join code mistakenly repacks a list into a list of PrismaValue somewhere in the core.
@@ -298,25 +305,31 @@ fn insensitive_scalar_filter(
     condition: ScalarCondition,
 ) -> crate::Result<Document> {
     let field_name = prefix.render_with(field.db_name().to_owned());
+    let field_part: Bson = if field.is_object_id() {
+        doc! { "$toObjectId": field_name.clone() }.into()
+    } else {
+        field_name.clone().into()
+    };
 
     match condition {
-        ScalarCondition::Equals(val) => regex_match(&field_name, field, "^", val, "$", true),
-        ScalarCondition::NotEquals(val) => Ok(doc! { "$not": regex_match(&field_name, field, "^", val, "$", true)? }),
+        ScalarCondition::Equals(val) => regex_match(&field_part, field, "^", val, "$", true),
+        ScalarCondition::NotEquals(val) => Ok(doc! { "$not": regex_match(&field_part, field, "^", val, "$", true)? }),
 
-        ScalarCondition::Contains(val) => regex_match(&field_name, field, ".*", val, ".*", true),
+        ScalarCondition::Contains(val) => regex_match(&field_part, field, ".*", val, ".*", true),
         ScalarCondition::NotContains(val) => {
-            Ok(doc! { "$not": regex_match(&field_name, field, ".*", val, ".*", true)?})
+            Ok(doc! { "$not": regex_match(&field_part, field, ".*", val, ".*", true)?})
         }
-        ScalarCondition::StartsWith(val) => regex_match(&field_name, field, "^", val, "", true),
+        ScalarCondition::StartsWith(val) => regex_match(&field_part, field, "^", val, "", true),
         ScalarCondition::NotStartsWith(val) => {
-            Ok(doc! { "$not": regex_match(&field_name, field, "^", val, "", true)? })
+            Ok(doc! { "$not": regex_match(&field_part, field, "^", val, "", true)? })
         }
-        ScalarCondition::EndsWith(val) => regex_match(&field_name, field, "", val, "$", true),
-        ScalarCondition::NotEndsWith(val) => Ok(doc! { "$not": regex_match(&field_name, field, "", val, "$", true)? }),
-        ScalarCondition::LessThan(val) => Ok(doc! { "$lt": [&field_name, (field, val).into_bson()?] }),
-        ScalarCondition::LessThanOrEquals(val) => Ok(doc! { "$lte": [&field_name, (field, val).into_bson()?] }),
-        ScalarCondition::GreaterThan(val) => Ok(doc! { "$gt": [&field_name, (field, val).into_bson()?] }),
-        ScalarCondition::GreaterThanOrEquals(val) => Ok(doc! { "$gte": [&field_name, (field, val).into_bson()?] }),
+        ScalarCondition::EndsWith(val) => regex_match(&field_part, field, "", val, "$", true),
+        ScalarCondition::NotEndsWith(val) => Ok(doc! { "$not": regex_match(&field_part, field, "", val, "$", true)? }),
+        ScalarCondition::LessThan(val) => Ok(doc! { "$lt": [&field_part, (field, val).into_bson()?] }),
+        ScalarCondition::LessThanOrEquals(val) => Ok(doc! { "$lte": [&field_part, (field, val).into_bson()?] }),
+        ScalarCondition::GreaterThan(val) => Ok(doc! { "$gt": [&field_part, (field, val).into_bson()?] }),
+        ScalarCondition::GreaterThanOrEquals(val) => Ok(doc! { "$gte": [&field_part, (field, val).into_bson()?] }),
+
         // Todo: The nested list unpack looks like a bug somewhere.
         // Likely join code mistakenly repacks a list into a list of PrismaValue somewhere in the core.
         ScalarCondition::In(vals) => match vals.split_first() {
@@ -327,7 +340,7 @@ fn insensitive_scalar_filter(
                 for pv in vals {
                     if let PrismaValue::List(inner) = pv {
                         for val in inner {
-                            matches.push(regex_match(&field_name, field, "^", val, "$", true)?)
+                            matches.push(regex_match(&field_part, field, "^", val, "$", true)?)
                         }
                     }
                 }
@@ -338,7 +351,7 @@ fn insensitive_scalar_filter(
             _ => {
                 let matches = vals
                     .into_iter()
-                    .map(|val| regex_match(&field_name, field, "^", val, "$", true))
+                    .map(|val| regex_match(&field_part, field, "^", val, "$", true))
                     .collect::<crate::Result<Vec<_>>>()?;
 
                 Ok(doc! { "$or": matches })
@@ -347,7 +360,7 @@ fn insensitive_scalar_filter(
         ScalarCondition::NotIn(vals) => {
             let matches = vals
                 .into_iter()
-                .map(|val| regex_match(&field_name, field, "^", val, "$", true).map(|doc| doc! { "$not": doc }))
+                .map(|val| regex_match(&field_part, field, "^", val, "$", true).map(|doc| doc! { "$not": doc }))
                 .collect::<crate::Result<Vec<_>>>()?;
 
             Ok(doc! { "$and": matches })
@@ -371,13 +384,18 @@ fn scalar_list_filter(
 ) -> crate::Result<MongoFilter> {
     let field = filter.field;
     let field_name = prefix.render_with(field.db_name().into());
+    let field_part: Bson = if field.is_object_id() {
+        doc! { "$map": { "input": &field_name, "as": "item", "in": { "$toObjectId": "$$item" } } }.into()
+    } else {
+        field_name.clone().into()
+    };
 
     // Of course Mongo needs special filters for the inverted case, everything else would be too easy.
     let filter_doc = if invert {
         match filter.condition {
             // "Contains element" -> "Does not contain element"
             connector_interface::ScalarListCondition::Contains(val) => {
-                doc! { "$not": { "$in": [(&field, val).into_bson()?, coerce_as_array(&field_name)] } }
+                doc! { "$not": { "$in": [(&field, val).into_bson()?, coerce_as_array(&field_part)] } }
             }
 
             // "Contains all elements" -> "Does not contain any of the elements"
@@ -387,7 +405,7 @@ fn scalar_list_filter(
                     .map(|val| {
                         (&field, val)
                             .into_bson()
-                            .map(|bson_val| doc! { "$not": { "$in": [bson_val, coerce_as_array(&field_name)] } })
+                            .map(|bson_val| doc! { "$not": { "$in": [bson_val, coerce_as_array(&field_part)] } })
                     })
                     .collect::<crate::Result<Vec<_>>>()?;
 
@@ -403,7 +421,7 @@ fn scalar_list_filter(
                     .map(|val| {
                         (&field, val)
                             .into_bson()
-                            .map(|bson_val| doc! { "$not": { "$in": [bson_val, coerce_as_array(&field_name)] } })
+                            .map(|bson_val| doc! { "$not": { "$in": [bson_val, coerce_as_array(&field_part)] } })
                     })
                     .collect::<crate::Result<Vec<_>>>()?;
 
@@ -424,7 +442,7 @@ fn scalar_list_filter(
     } else {
         match filter.condition {
             connector_interface::ScalarListCondition::Contains(val) => {
-                doc! { "$in": [(&field, val).into_bson()?, coerce_as_array(&field_name)] }
+                doc! { "$in": [(&field, val).into_bson()?, coerce_as_array(&field_part)] }
             }
 
             connector_interface::ScalarListCondition::ContainsEvery(vals) if vals.is_empty() => {
@@ -438,7 +456,7 @@ fn scalar_list_filter(
                     .map(|val| {
                         (&field, val)
                             .into_bson()
-                            .map(|bson_val| doc! { "$in": [bson_val, coerce_as_array(&field_name)] })
+                            .map(|bson_val| doc! { "$in": [bson_val, coerce_as_array(&field_part)] })
                     })
                     .collect::<crate::Result<Vec<_>>>()?;
 
@@ -456,7 +474,7 @@ fn scalar_list_filter(
                     .map(|val| {
                         (&field, val)
                             .into_bson()
-                            .map(|bson_val| doc! { "$in": [bson_val, coerce_as_array(&field_name)] })
+                            .map(|bson_val| doc! { "$in": [bson_val, coerce_as_array(&field_part)] })
                     })
                     .collect::<crate::Result<Vec<_>>>()?;
 
@@ -715,7 +733,7 @@ fn composite_filter(
 
 /// Renders a `$regexMatch` expression.
 fn regex_match(
-    field_name: &str,
+    field_part: &Bson,
     field: &ScalarFieldRef,
     prefix: &str,
     val: PrismaValue,
@@ -735,7 +753,7 @@ fn regex_match(
 
     Ok(doc! {
         "$regexMatch": {
-            "input": field_name,
+            "input": field_part,
             "regex": pattern,
             "options": options
         }
@@ -746,16 +764,16 @@ fn regex_match(
 /// If `coerce_array` is true, the array will be coerced to an empty array in case it's `null` or `undefined`.
 fn render_size(field_name: &str, coerce_array: bool) -> Document {
     if coerce_array {
-        doc! { "$size": coerce_as_array(field_name) }
+        doc! { "$size": coerce_as_array(&Bson::from(field_name)) }
     } else {
         doc! { "$size": field_name }
     }
 }
 
-/// Coerces a field to an empty array if it's `null` or `undefined`.
+/// Coerces a bson value to an empty array if it's `null` or `undefined`.
 /// Renders an `$ifNull` expression.
-fn coerce_as_array(field_name: &str) -> Document {
-    doc! { "$ifNull": [field_name, []] }
+fn coerce_as_array(inner: &Bson) -> Document {
+    doc! { "$ifNull": [inner, []] }
 }
 
 /// Coerces a field to `null` if it's `null` or `undefined`.
@@ -774,7 +792,7 @@ fn render_some(
     coerce_array: bool,
 ) -> crate::Result<(Document, Vec<JoinStage>)> {
     let input = if coerce_array {
-        Bson::from(coerce_as_array(field_name))
+        Bson::from(coerce_as_array(&Bson::from(field_name)))
     } else {
         Bson::from(field_name)
     };
@@ -811,7 +829,7 @@ fn render_every(
     coerce_array: bool,
 ) -> crate::Result<(Document, Vec<JoinStage>)> {
     let input = if coerce_array {
-        Bson::from(coerce_as_array(field_name))
+        Bson::from(coerce_as_array(&Bson::from(field_name)))
     } else {
         Bson::from(field_name)
     };
@@ -848,7 +866,7 @@ fn render_none(
     coerce_array: bool,
 ) -> crate::Result<(Document, Vec<JoinStage>)> {
     let input = if coerce_array {
-        Bson::from(coerce_as_array(field_name))
+        Bson::from(coerce_as_array(&Bson::from(field_name)))
     } else {
         Bson::from(field_name)
     };
