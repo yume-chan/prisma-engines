@@ -7,7 +7,7 @@ use super::{field_type::FieldType, CompositeTypeDepth};
 use convert_case::{Case, Casing};
 use datamodel::dml::{
     self, CompositeType, CompositeTypeField, CompositeTypeFieldType, Datamodel, DefaultValue, Field, FieldArity, Model,
-    PrimaryKeyDefinition, PrimaryKeyField, ScalarField, ScalarType, ValueGenerator, WithDatabaseName,
+    PrimaryKeyDefinition, PrimaryKeyField, ScalarField, ScalarType, SortOrder, ValueGenerator, WithDatabaseName,
 };
 use introspection_connector::Warning;
 use mongodb::bson::{Bson, Document};
@@ -63,6 +63,141 @@ impl<'a> Statistics<'a> {
     pub(super) fn track_index(&mut self, model_name: &str, index: IndexWalker<'a>) {
         let indexes = self.indices.entry(model_name.to_string()).or_default();
         indexes.push(index);
+    }
+
+    pub(super) fn into_schema(self, warnings: &mut Vec<Warning>) -> String {
+        use schema_renderer::*;
+
+        let mut schema = PrismaSchema::default();
+        let mut added_models: HashMap<String, ModelId> = HashMap::new();
+        let mut added_types: HashMap<String, CompositeTypeId> = HashMap::new();
+
+        let mut unsupported = Vec::new();
+        let mut unknown_types = Vec::new();
+        let mut undecided_types = Vec::new();
+        let mut fields_with_empty_names = Vec::new();
+
+        for ((container, field_name), sampler) in self.samples.into_iter() {
+            let doc_count = *self.models.get(&container).unwrap_or(&0);
+            let field_count = sampler.counter;
+
+            let percentages = sampler.percentages();
+            let most_common_type = percentages.find_most_common();
+
+            let field_type = match &most_common_type {
+                Some(field_type) if !percentages.has_type_variety() => field_type.to_owned(),
+                Some(_) if percentages.all_types_are_datetimes() => FieldType::Timestamp,
+                _ => FieldType::Json,
+            };
+
+            if let FieldType::Unsupported(r#type) = field_type {
+                unsupported.push((container.clone(), field_name.to_string(), r#type));
+            }
+
+            if percentages.data.len() > 1 {
+                undecided_types.push((container.clone(), field_name.to_string(), field_type.to_string()));
+            }
+
+            if field_name.is_empty() {
+                fields_with_empty_names.push((container.clone(), field_name.clone()));
+            }
+
+            let mut field = ScalarField::new(field_name.clone(), ScalarFieldType::from(field_type.clone()));
+            field.set_array(field_type.is_array());
+            field.set_optional(sampler.nullable || doc_count > field_count);
+
+            if percentages.has_type_variety() {
+                let doc = format!(
+                    "Multiple data types found: {} out of {} sampled entries",
+                    percentages, field_count
+                );
+
+                field.push_docs(doc);
+            }
+
+            if most_common_type.is_none() {
+                let doc = "Could not determine type: the field only had null or empty values in the sample set.";
+                field.push_docs(doc);
+
+                unknown_types.push((container.clone(), field_name.to_string()));
+            }
+
+            match container {
+                Name::Model(name) => {
+                    let model_id = added_models
+                        .entry(name.clone())
+                        .or_insert_with(|| schema.push_model(Model::new(name)));
+
+                    let is_id = field.name() == "_id";
+
+                    if matches!(&field_type, FieldType::ObjectId) && is_id {
+                        field.set_default_value("auto()");
+                    }
+
+                    if field.name() == "id" && field.database_name().is_none() {
+                        field.set_name("id_");
+                        field.set_database_name("id");
+                    }
+
+                    let field_id = schema.push_model_field(*model_id, field);
+
+                    if is_id {
+                        let model = &mut schema[*model_id];
+                        model.set_primary_key(vec![field_id]);
+                    }
+                }
+                Name::CompositeType(name) => {
+                    let ct_id = added_types
+                        .entry(name.clone())
+                        .or_insert_with(|| schema.push_type(CompositeType::new(name)));
+
+                    schema.push_type_field(*ct_id, field);
+                }
+            }
+        }
+
+        for (model_name, indices) in self.indices.into_iter() {
+            let model_id = schema.model_id_for_name(&model_name).unwrap_or_else(|| {
+                let model = Model::new(model_name);
+                let model_id = schema.push_model(model);
+
+                let mut field = ScalarField::new("id", ScalarFieldType::from(FieldType::ObjectId));
+                field.set_database_name("_id");
+                field.set_default_value("auto()");
+
+                let field_id = schema.push_model_field(model_id, field);
+
+                let model = &mut schema[model_id];
+                model.set_primary_key(vec![field_id]);
+
+                model_id
+            });
+
+            for walker in indices.into_iter() {
+                let mut index = match walker.r#type() {
+                    mongodb_schema_describer::IndexType::Normal => Index::new(),
+                    mongodb_schema_describer::IndexType::Unique => Index::unique(),
+                    mongodb_schema_describer::IndexType::Fulltext => Index::fulltext(),
+                };
+
+                index.set_map(walker.name());
+
+                let index_id = schema.push_index(model_id, index);
+
+                for walker in walker.fields() {
+                    let mut field = IndexField::new(walker.name());
+
+                    if matches!(
+                        walker.property,
+                        mongodb_schema_describer::IndexFieldProperty::Descending
+                    ) {
+                        field.sort(IndexFieldSort::Descending);
+                    }
+                }
+            }
+        }
+
+        schema.to_string()
     }
 
     /// From the given data, create a Prisma data model with best effort basis.

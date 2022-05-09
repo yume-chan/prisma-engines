@@ -252,43 +252,47 @@ pub(super) fn cycles(relation: CompleteInlineRelationWalker<'_>, ctx: &mut Conte
 
         // a cycle has a meaning only if every relation in it triggers
         // modifications in the children
-        if on_update.triggers_modification() || on_delete.triggers_modification() {
-            let model = next_relation.referencing_model();
+        if !on_update.triggers_modification() && !on_delete.triggers_modification() {
+            continue;
+        }
 
-            if model == related_model {
-                let msg = "A self-relation must have `onDelete` and `onUpdate` referential actions set to `NoAction` in one of the @relation attributes.";
-                ctx.push_error(cascade_error_with_default_values(
-                    relation,
-                    ctx.connector,
-                    ctx.referential_integrity,
-                    msg,
-                ));
+        let model = next_relation.referencing_model();
 
-                return;
-            }
+        if model == related_model {
+            let msg = "A self-relation must have `onDelete` and `onUpdate` referential actions set to `NoAction` in one of the @relation attributes.";
 
-            if related_model == parent_model {
-                let msg = format!(
-                    "Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: {}.",
-                    visited_relations
-                );
+            ctx.push_error(cascade_error_with_default_values(
+                relation,
+                ctx.connector,
+                ctx.referential_integrity,
+                msg,
+            ));
 
-                ctx.push_error(cascade_error_with_default_values(
-                    relation,
-                    ctx.connector,
-                    ctx.referential_integrity,
-                    &msg,
-                ));
-                return;
-            }
+            return;
+        }
 
-            let relations = related_model
-                .complete_inline_relations_from()
-                .filter(|r| !visited.contains(&r.referencing_field()));
+        if related_model == parent_model {
+            let msg = format!(
+                "Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: {}.",
+                visited_relations
+            );
 
-            for relation in relations {
-                next_relations.push((relation, Rc::new(visited_relations.link_next(relation))));
-            }
+            ctx.push_error(cascade_error_with_default_values(
+                relation,
+                ctx.connector,
+                ctx.referential_integrity,
+                &msg,
+            ));
+
+            return;
+        }
+
+        let relations = related_model
+            .complete_inline_relations_from()
+            .filter(|r| !visited.contains(&r.referencing_field()));
+
+        for relation in relations {
+            next_relations.push((relation, Rc::new(visited_relations.link_next(relation))));
         }
     }
 }

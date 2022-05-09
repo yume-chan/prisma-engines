@@ -2228,7 +2228,6 @@ dependencies = [
  "async-trait",
  "convert_case 0.4.0",
  "datamodel",
- "datamodel-connector",
  "enumflags2",
  "expect-test",
  "futures",
@@ -2242,6 +2241,7 @@ dependencies = [
  "native-types",
  "once_cell",
  "regex",
+ "schema-renderer",
  "serde_json",
  "thiserror",
  "tokio",
@@ -3796,6 +3796,14 @@ dependencies = [
  "once_cell",
  "prisma-models",
  "schema",
+]
+
+[[package]]
+name = "schema-renderer"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "regex",
 ]
 
 [[package]]
