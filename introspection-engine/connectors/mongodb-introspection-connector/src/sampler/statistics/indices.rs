@@ -14,16 +14,31 @@ pub(super) fn add_to_models(
     models: &mut BTreeMap<String, dml::Model>,
     types: &mut BTreeMap<String, dml::CompositeType>,
     indices: &mut BTreeMap<String, Vec<IndexWalker<'_>>>,
+    schema_bits: &mut datamodel::SchemaBits,
     warnings: &mut Vec<Warning>,
 ) {
     let mut fields_with_unknown_type = Vec::new();
 
-    for (model_name, model) in models.iter_mut() {
+    for (model_idx, (model_name, model)) in models.iter_mut().enumerate() {
         for index in indices.remove(model_name).into_iter().flat_map(|i| i.into_iter()) {
             let defined_on_field = index.fields().len() == 1 && !index.fields().any(|f| f.name().contains('.'));
 
             add_missing_fields_from_index(model, index, &mut fields_with_unknown_type);
             add_missing_types_from_index(types, model, index, &mut fields_with_unknown_type);
+
+            let mut fields = String::new();
+
+            for field in index.fields() {
+                let name = super::sanitize_string(field.name()).unwrap_or_else(|| field.name().to_owned());
+                fields.push_str(&name);
+
+                match field.property {
+                    IndexFieldProperty::Text | IndexFieldProperty::Ascending => (),
+                    IndexFieldProperty::Descending => {
+                        fields.push_str("(sort: desc)");
+                    }
+                }
+            }
 
             let fields = index
                 .fields()
@@ -80,6 +95,10 @@ pub(super) fn add_to_models(
                 mongodb_schema_describer::IndexType::Unique => dml::IndexType::Unique,
                 mongodb_schema_describer::IndexType::Fulltext => dml::IndexType::Fulltext,
             };
+
+            schema_bits
+                .extra_indexes
+                .push((model_idx, tpe, fields, defined_on_field));
 
             model.add_index(dml::IndexDefinition {
                 fields,
@@ -165,10 +184,10 @@ fn add_missing_types_from_index(
                 .and_then(|f| f.as_scalar_field());
 
             next_type = match sf {
-                Some(sf) => {
-                    let type_name = sf.field_type.as_composite_type().unwrap();
-                    Some(type_name.to_string())
-                }
+                Some(sf) => match &sf.field_type {
+                    dml::FieldType::CompositeType(type_name) => Some(type_name.to_owned()),
+                    _ => break,
+                },
                 None => {
                     let docs = String::from("Field referred in an index, but found no data to define the type.");
 

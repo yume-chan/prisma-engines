@@ -44,6 +44,8 @@ pub enum Version {
 pub struct IntrospectionResult {
     /// Datamodel
     pub data_model: Datamodel,
+    /// Information for rendering that does not fit in dml::Datamodel
+    pub schema_bits: datamodel::SchemaBits,
     /// Introspection warnings
     pub warnings: Vec<Warning>,
     /// Inferred Prisma version

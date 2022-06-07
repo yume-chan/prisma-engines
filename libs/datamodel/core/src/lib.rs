@@ -67,6 +67,7 @@ pub use diagnostics;
 pub use parser_database;
 pub use parser_database::is_reserved_type_name;
 pub use schema_ast::{self, ast};
+pub use transform::dml_to_ast::SchemaBits;
 
 use crate::common::preview_features::PreviewFeature;
 use diagnostics::Diagnostics;

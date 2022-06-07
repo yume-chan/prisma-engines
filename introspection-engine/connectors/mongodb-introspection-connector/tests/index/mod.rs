@@ -2097,3 +2097,26 @@ fn fulltext_index_pointing_to_non_existing_field_should_add_the_field() {
         "field": "age"
     }]));
 }
+
+#[test]
+fn composite_type_index_without_corresponding_data_should_not_crash() {
+    let res = introspect(|db| async move {
+        db.create_collection("A", None).await?;
+        let collection = db.collection::<mongodb::bson::Document>("A");
+
+        let model = IndexModel::builder().keys(doc! { "foo": 1 }).build();
+
+        collection.create_index(model, None).await?;
+
+        let model = IndexModel::builder().keys(doc! { "foo.bar": 1 }).build();
+
+        collection.create_index(model, None).await?;
+
+        Ok(())
+    });
+
+    let expected = expect![[r#"
+    "#]];
+
+    expected.assert_eq(res.datamodel());
+}

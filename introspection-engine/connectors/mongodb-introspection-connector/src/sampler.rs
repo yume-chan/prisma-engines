@@ -48,10 +48,11 @@ pub(super) async fn sample(
         }
     }
 
-    let data_model = statistics.into_datamodel(&mut warnings);
+    let (data_model, schema_bits) = statistics.into_datamodel(&mut warnings);
 
     Ok(IntrospectionResult {
         data_model,
+        schema_bits,
         warnings,
         version: Version::NonPrisma,
     })

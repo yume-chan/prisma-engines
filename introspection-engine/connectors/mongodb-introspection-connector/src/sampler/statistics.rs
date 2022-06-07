@@ -5,9 +5,12 @@ pub(crate) use name::Name;
 
 use super::{field_type::FieldType, CompositeTypeDepth};
 use convert_case::{Case, Casing};
-use datamodel::dml::{
-    self, CompositeType, CompositeTypeField, CompositeTypeFieldType, Datamodel, DefaultValue, Field, FieldArity, Model,
-    PrimaryKeyDefinition, PrimaryKeyField, ScalarField, ScalarType, ValueGenerator, WithDatabaseName,
+use datamodel::{
+    dml::{
+        self, CompositeType, CompositeTypeField, CompositeTypeFieldType, Datamodel, DefaultValue, Field, FieldArity,
+        Model, PrimaryKeyDefinition, PrimaryKeyField, ScalarField, ScalarType, ValueGenerator, WithDatabaseName,
+    },
+    SchemaBits,
 };
 use introspection_connector::Warning;
 use mongodb::bson::{Bson, Document};
@@ -66,8 +69,9 @@ impl<'a> Statistics<'a> {
     }
 
     /// From the given data, create a Prisma data model with best effort basis.
-    pub(super) fn into_datamodel(self, warnings: &mut Vec<Warning>) -> Datamodel {
+    pub(super) fn into_datamodel(self, warnings: &mut Vec<Warning>) -> (Datamodel, SchemaBits) {
         let mut data_model = Datamodel::new();
+        let schema_bits = SchemaBits::default();
         let mut indices = self.indices;
         let (mut models, mut types) = populate_fields(&self.models, self.samples, warnings);
 
@@ -97,7 +101,7 @@ impl<'a> Statistics<'a> {
             data_model.composite_types.push(composite_type);
         }
 
-        data_model
+        (data_model, schema_bits)
     }
 
     /// Creates a new name for a composite type with the following rules:

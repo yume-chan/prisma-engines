@@ -7,6 +7,19 @@ use crate::{
 use enumflags2::BitFlags;
 use itertools::Itertools;
 
+/// Extra bits of schema that do not fit in dml, for rendering.
+#[derive(Debug, Default)]
+pub struct SchemaBits {
+    /// (model_idx, index_is_unique, fields)
+    pub extra_indexes: Vec<(usize, bool, String)>,
+}
+
+#[derive(Debug)]
+struct ExtraIndex {
+    index_type: dml::IndexType,
+    fields: String,
+}
+
 pub struct LowerDmlToAst<'a> {
     pub datasource: Option<&'a Datasource>,
     pub preview_features: BitFlags<PreviewFeature>,

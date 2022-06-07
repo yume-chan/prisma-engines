@@ -81,5 +81,6 @@ pub fn calculate_datamodel(
         data_model: datamodel,
         warnings,
         version,
+        schema_bits: datamodel::SchemaBits::default(),
     })
 }
