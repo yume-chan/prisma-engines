@@ -301,8 +301,6 @@ fn visit_field_unique(field_id: ast::FieldId, model_attributes: &mut ModelAttrib
         None => None,
     };
 
-    let clustered = validate_clustering_setting(ctx);
-
     model_attributes.ast_indexes.push((
         ctx.current_attribute_id(),
         IndexAttribute {
@@ -315,7 +313,6 @@ fn visit_field_unique(field_id: ast::FieldId, model_attributes: &mut ModelAttrib
             }],
             source_field: Some(field_id),
             mapped_name,
-            clustered,
             ..Default::default()
         },
     ))
@@ -525,7 +522,6 @@ fn model_index(data: &mut ModelAttributes, model_id: ast::ModelId, ctx: &mut Con
     };
 
     index_attribute.algorithm = algo;
-    index_attribute.clustered = validate_clustering_setting(ctx);
 
     data.ast_indexes.push((ctx.current_attribute_id(), index_attribute));
 }
@@ -582,7 +578,6 @@ fn model_unique(data: &mut ModelAttributes, model_id: ast::ModelId, ctx: &mut Co
 
     index_attribute.name = name;
     index_attribute.mapped_name = mapped_name;
-    index_attribute.clustered = validate_clustering_setting(ctx);
 
     data.ast_indexes.push((current_attribute_id, index_attribute));
 }
@@ -1090,15 +1085,4 @@ fn validate_client_name(span: Span, object_name: &str, name: StringId, attribute
         object_name,
         span,
     ))
-}
-
-fn validate_clustering_setting(ctx: &mut Context<'_>) -> Option<bool> {
-    match ctx.visit_optional_arg("clustered").map(|sort| sort.as_bool()) {
-        Some(Ok(val)) => Some(val),
-        Some(Err(err)) => {
-            ctx.push_error(err);
-            None
-        }
-        None => None,
-    }
 }

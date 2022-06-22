@@ -43,11 +43,11 @@ impl<'ast, 'db> PrimaryKeyWalker<'db> {
         }
     }
 
-    /// If true, the index defines the storage and ordering of the row. Mostly
-    /// matters on SQL Server where one can change the clustering.
-    pub fn clustered(self) -> Option<bool> {
-        self.attribute.clustered
-    }
+    // /// If true, the index defines the storage and ordering of the row. Mostly
+    // /// matters on SQL Server where one can change the clustering.
+    // pub fn clustered(self) -> Option<bool> {
+    //     self.attribute.clustered
+    // }
 
     /// The model the id is deined on.
     pub fn model(self) -> ModelWalker<'db> {

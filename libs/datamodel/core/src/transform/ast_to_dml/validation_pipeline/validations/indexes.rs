@@ -284,59 +284,59 @@ pub(super) fn has_fields(index: IndexWalker<'_>, ctx: &mut Context<'_>) {
     ))
 }
 
-pub(crate) fn supports_clustering_setting(index: IndexWalker<'_>, ctx: &mut Context<'_>) {
-    if ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
-        return;
-    }
+// pub(crate) fn supports_clustering_setting(index: IndexWalker<'_>, ctx: &mut Context<'_>) {
+//     if ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
+//         return;
+//     }
 
-    if index.clustered().is_none() {
-        return;
-    }
+//     if index.clustered().is_none() {
+//         return;
+//     }
 
-    ctx.push_error(DatamodelError::new_attribute_validation_error(
-        "Defining clustering is not supported in the current connector.",
-        index.attribute_name(),
-        index.ast_attribute().span,
-    ))
-}
+//     ctx.push_error(DatamodelError::new_attribute_validation_error(
+//         "Defining clustering is not supported in the current connector.",
+//         index.attribute_name(),
+//         index.ast_attribute().span,
+//     ))
+// }
 
-pub(crate) fn clustering_can_be_defined_only_once(index: IndexWalker<'_>, ctx: &mut Context<'_>) {
-    if !ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
-        return;
-    }
+// pub(crate) fn clustering_can_be_defined_only_once(index: IndexWalker<'_>, ctx: &mut Context<'_>) {
+//     if !ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
+//         return;
+//     }
 
-    if index.clustered() != Some(true) {
-        return;
-    }
+//     if index.clustered() != Some(true) {
+//         return;
+//     }
 
-    if let Some(pk) = index.model().primary_key() {
-        if matches!(pk.clustered(), Some(true) | None) {
-            ctx.push_error(DatamodelError::new_attribute_validation_error(
-                "A model can only hold one clustered index or key.",
-                index.attribute_name(),
-                index.ast_attribute().span,
-            ));
-        }
-    }
+//     if let Some(pk) = index.model().primary_key() {
+//         if matches!(pk.clustered(), Some(true) | None) {
+//             ctx.push_error(DatamodelError::new_attribute_validation_error(
+//                 "A model can only hold one clustered index or key.",
+//                 index.attribute_name(),
+//                 index.ast_attribute().span,
+//             ));
+//         }
+//     }
 
-    for other in index.model().indexes() {
-        if other.attribute_id() == index.attribute_id() {
-            continue;
-        }
+//     for other in index.model().indexes() {
+//         if other.attribute_id() == index.attribute_id() {
+//             continue;
+//         }
 
-        if other.clustered() != Some(true) {
-            continue;
-        }
+//         if other.clustered() != Some(true) {
+//             continue;
+//         }
 
-        ctx.push_error(DatamodelError::new_attribute_validation_error(
-            "A model can only hold one clustered index.",
-            index.attribute_name(),
-            index.ast_attribute().span,
-        ));
+//         ctx.push_error(DatamodelError::new_attribute_validation_error(
+//             "A model can only hold one clustered index.",
+//             index.attribute_name(),
+//             index.ast_attribute().span,
+//         ));
 
-        return;
-    }
-}
+//         return;
+//     }
+// }
 
 /// Is the index algorithm supported by the current connector.
 pub(crate) fn index_algorithm_is_supported(index: IndexWalker<'_>, ctx: &mut Context<'_>) {

@@ -16,10 +16,7 @@ use crate::{
     },
 };
 use datamodel_connector::{walker_ext_traits::*, ConnectorCapability};
-use parser_database::{
-    ast::WithSpan,
-    walkers::{PrimaryKeyWalker, TypedFieldWalker},
-};
+use parser_database::walkers::TypedFieldWalker;
 
 pub(super) fn validate_client_name(field: FieldWalker<'_>, names: &Names<'_>, ctx: &mut Context<'_>) {
     let model = field.model();
@@ -344,45 +341,45 @@ pub(super) fn validate_unsupported_field_type(field: ScalarFieldWalker<'_>, ctx:
     }
 }
 
-pub(crate) fn id_supports_clustering_setting(pk: PrimaryKeyWalker<'_>, ctx: &mut Context<'_>) {
-    if ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
-        return;
-    }
+// pub(crate) fn id_supports_clustering_setting(pk: PrimaryKeyWalker<'_>, ctx: &mut Context<'_>) {
+//     if ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
+//         return;
+//     }
 
-    if pk.clustered().is_none() {
-        return;
-    }
+//     if pk.clustered().is_none() {
+//         return;
+//     }
 
-    ctx.push_error(DatamodelError::new_attribute_validation_error(
-        "Defining clustering is not supported in the current connector.",
-        pk.attribute_name(),
-        *pk.ast_attribute().span(),
-    ));
-}
+//     ctx.push_error(DatamodelError::new_attribute_validation_error(
+//         "Defining clustering is not supported in the current connector.",
+//         pk.attribute_name(),
+//         *pk.ast_attribute().span(),
+//     ));
+// }
 
-/// Only one index or key can be clustered per table.
-///
-/// Here we check the primary key. Another check in index validations.
-pub(crate) fn clustering_can_be_defined_only_once(pk: PrimaryKeyWalker<'_>, ctx: &mut Context<'_>) {
-    if !ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
-        return;
-    }
+///// Only one index or key can be clustered per table.
+/////
+///// Here we check the primary key. Another check in index validations.
+//pub(crate) fn clustering_can_be_defined_only_once(pk: PrimaryKeyWalker<'_>, ctx: &mut Context<'_>) {
+//    if !ctx.connector.has_capability(ConnectorCapability::ClusteringSetting) {
+//        return;
+//    }
 
-    if pk.clustered() == Some(false) {
-        return;
-    }
+//    if pk.clustered() == Some(false) {
+//        return;
+//    }
 
-    for index in pk.model().indexes() {
-        if index.clustered() != Some(true) {
-            continue;
-        }
+//    for index in pk.model().indexes() {
+//        if index.clustered() != Some(true) {
+//            continue;
+//        }
 
-        ctx.push_error(DatamodelError::new_attribute_validation_error(
-            "A model can only hold one clustered index or id.",
-            pk.attribute_name(),
-            *pk.ast_attribute().span(),
-        ));
+//        ctx.push_error(DatamodelError::new_attribute_validation_error(
+//            "A model can only hold one clustered index or id.",
+//            pk.attribute_name(),
+//            *pk.ast_attribute().span(),
+//        ));
 
-        return;
-    }
-}
+//        return;
+//    }
+//}

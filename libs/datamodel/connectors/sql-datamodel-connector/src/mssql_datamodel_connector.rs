@@ -98,7 +98,6 @@ const CAPABILITIES: &[ConnectorCapability] = &[
     ConnectorCapability::PrimaryKeySortOrderDefinition,
     ConnectorCapability::ImplicitManyToManyRelation,
     ConnectorCapability::DecimalType,
-    ConnectorCapability::ClusteringSetting,
 ];
 
 pub struct MsSqlDatamodelConnector;
@@ -424,11 +423,64 @@ impl Connector for MsSqlDatamodelConnector {
             });
         }
     }
+
+    fn validate_unknown_attribute_arguments(&self, db: &mut ParserDatabase, diagnostics: &mut Diagnostics) {
+        let mut clustered_args = Vec::new();
+        for (attr_id, arg_idx) in db.walk_unknown_attribute_arguments() {
+            let attribute = &db.ast()[attr_id];
+            let argument = &attribute.arguments.arguments[arg_idx];
+
+            if handle_clustered_argument(&attribute, attr_id, &argument, &mut clustered_args, diagnostics) {
+                continue;
+            }
+
+            diagnostics.push_error(DatamodelError::new_unused_argument_error(
+                argument.name.as_ref().map(|n| n.name.as_str()).unwrap_or(""),
+                argument.span,
+            ));
+        }
+
+        let mut extension = db.connector_extensions_mut::<MssqlExtension>();
+        extension.clustered_args = clustered_args;
+    }
+}
+
+fn handle_clustered_argument(
+    attr: &ast::Attribute,
+    attr_id: ast::AttributeId,
+    argument: &ast::Argument,
+    clustered_args: &mut Vec<(ast::AttributeId, bool)>,
+    diagnostics: &mut Diagnostics,
+) -> bool {
+    if !["id", "unique", "index"].contains(&attr.name.name.as_str()) {
+        return false;
+    }
+
+    match &argument.value {
+        ast::Expression::ConstantValue(v, _) if ["true", "false"].contains(&v.as_str()) => {
+            clustered_args.push((attr_id, v.parse().unwrap()));
+        }
+        other => {
+            diagnostics.push_error(DatamodelError::new_type_mismatch_error(
+                "boolean",
+                other.describe_value_type(),
+                &other.to_string(),
+                argument.value.span(),
+            ));
+        }
+    }
+
+    true
+}
+
+#[derive(Default)]
+struct MssqlExtension {
+    clustered_args: Vec<(ast::AttributeId, bool)>,
 }
 
 /// A collection of types stored outside of the row to the heap, having
 /// certain properties such as not allowed in keys or normal indices.
-pub fn heap_allocated_types() -> &'static [MsSqlType] {
+fn heap_allocated_types() -> &'static [MsSqlType] {
     &[
         Text,
         NText,

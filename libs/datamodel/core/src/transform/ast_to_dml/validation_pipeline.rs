@@ -47,6 +47,8 @@ pub(crate) fn validate(
         return output;
     }
 
+    connector.validate_unknown_attribute_arguments(&mut output.db, &mut output.diagnostics);
+
     let mut context = context::Context {
         db: &output.db,
         datasource: source,

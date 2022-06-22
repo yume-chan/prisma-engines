@@ -113,7 +113,7 @@ pub trait Connector: Send + Sync {
 
     fn validate_unknown_attribute_arguments(
         &self,
-        db: &parser_database::ParserDatabase,
+        db: &mut parser_database::ParserDatabase,
         diagnostics: &mut Diagnostics,
     ) {
         for (attr_id, arg_idx) in db.walk_unknown_attribute_arguments() {

@@ -3,24 +3,26 @@ use crate::{common::*, with_header, Provider};
 #[test]
 fn non_boolean_clustering() {
     let dml = indoc! {r#"
+        datasource db {
+            provider = "sqlserver"
+            url = env("TEST_DATABASE_URL")
+        }
+
         model A {
           id Int @id(clustered: meow)
         }
     "#};
 
-    let schema = with_header(dml, Provider::Postgres, &[]);
-    let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
-
     let expectation = expect![[r#"
         [1;91merror[0m: [1mExpected a boolean value, but received literal value `meow`.[0m
-          [1;94m-->[0m  [4mschema.prisma:12[0m
+          [1;94m-->[0m  [4mschema.prisma:7[0m
         [1;94m   | [0m
-        [1;94m11 | [0mmodel A {
-        [1;94m12 | [0m  id Int @id(clustered: [1;91mmeow[0m)
+        [1;94m 6 | [0mmodel A {
+        [1;94m 7 | [0m  id Int @id(clustered: [1;91mmeow[0m)
         [1;94m   | [0m
     "#]];
 
-    expectation.assert_eq(&error);
+    expect_error(dml, &expectation);
 }
 
 #[test]
@@ -159,11 +161,11 @@ fn clustered_index_allowed_only_in_sql_server() {
     let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
-        [1;91merror[0m: [1mError parsing attribute "@@index": Defining clustering is not supported in the current connector.[0m
+        [1;91merror[0m: [1mNo such argument.[0m
           [1;94m-->[0m  [4mschema.prisma:15[0m
         [1;94m   | [0m
         [1;94m14 | [0m
-        [1;94m15 | [0m  @@[1;91mindex([a], clustered: true)[0m
+        [1;94m15 | [0m  @@index([a], [1;91mclustered: true[0m)
         [1;94m   | [0m
     "#]];
 
@@ -183,11 +185,11 @@ fn clustered_unique_allowed_only_in_sql_server() {
     let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
-        [1;91merror[0m: [1mError parsing attribute "@unique": Defining clustering is not supported in the current connector.[0m
+        [1;91merror[0m: [1mNo such argument.[0m
           [1;94m-->[0m  [4mschema.prisma:13[0m
         [1;94m   | [0m
         [1;94m12 | [0m  id Int @id @map("_id")
-        [1;94m13 | [0m  a  Int @[1;91munique(clustered: true)[0m
+        [1;94m13 | [0m  a  Int @unique([1;91mclustered: true[0m)
         [1;94m   | [0m
     "#]];
 
@@ -210,11 +212,11 @@ fn clustered_compound_unique_allowed_only_in_sql_server() {
     let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
-        [1;91merror[0m: [1mError parsing attribute "@@unique": Defining clustering is not supported in the current connector.[0m
+        [1;91merror[0m: [1mNo such argument.[0m
           [1;94m-->[0m  [4mschema.prisma:16[0m
         [1;94m   | [0m
         [1;94m15 | [0m
-        [1;94m16 | [0m  @@[1;91munique([a, b], clustered: true)[0m
+        [1;94m16 | [0m  @@unique([a, b], [1;91mclustered: true[0m)
         [1;94m   | [0m
     "#]];
 
@@ -233,11 +235,11 @@ fn non_clustered_id_allowed_only_in_sql_server() {
     let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
-        [1;91merror[0m: [1mError parsing attribute "@id": Defining clustering is not supported in the current connector.[0m
+        [1;91merror[0m: [1mNo such argument.[0m
           [1;94m-->[0m  [4mschema.prisma:12[0m
         [1;94m   | [0m
         [1;94m11 | [0mmodel A {
-        [1;94m12 | [0m  id Int @[1;91mid(clustered: false)[0m @map("_id")
+        [1;94m12 | [0m  id Int @id([1;91mclustered: false[0m) @map("_id")
         [1;94m   | [0m
     "#]];
 
@@ -259,11 +261,11 @@ fn non_clustered_compound_id_allowed_only_in_sql_server() {
     let error = datamodel::parse_schema(&schema).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
-        [1;91merror[0m: [1mError parsing attribute "@@id": Defining clustering is not supported in the current connector.[0m
+        [1;91merror[0m: [1mNo such argument.[0m
           [1;94m-->[0m  [4mschema.prisma:15[0m
         [1;94m   | [0m
         [1;94m14 | [0m
-        [1;94m15 | [0m  @@[1;91mid([left, right], clustered: false)[0m
+        [1;94m15 | [0m  @@id([left, right], [1;91mclustered: false[0m)
         [1;94m   | [0m
     "#]];
 
