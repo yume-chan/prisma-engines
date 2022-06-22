@@ -93,6 +93,14 @@ impl ParserDatabase {
             })
     }
 
+    /// Traverse all attributes with non-core arguments. This is used by connectors for validation.
+    pub fn walk_unknown_attribute_arguments(&self) -> impl Iterator<Item = (ast::AttributeId, usize)> + '_ {
+        self.types
+            .unknown_attribute_arguments
+            .iter()
+            .map(|(id, arg)| (*id, *arg))
+    }
+
     /// Walk all the relations in the schema. A relation may be defined by one or two fields; in
     /// both cases, it is still a single relation.
     pub fn walk_relations(&self) -> impl Iterator<Item = RelationWalker<'_>> + '_ {

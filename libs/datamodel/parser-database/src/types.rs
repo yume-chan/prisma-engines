@@ -32,6 +32,7 @@ pub(super) struct Types {
     /// not part of the base Prisma ones. This is meant for later validation in the datamodel
     /// connector.
     pub(super) unknown_function_defaults: Vec<(ast::ModelId, ast::FieldId)>,
+    pub(super) unknown_attribute_arguments: Vec<(ast::AttributeId, usize)>,
 }
 
 impl Types {

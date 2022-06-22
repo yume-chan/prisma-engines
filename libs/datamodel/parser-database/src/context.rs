@@ -268,29 +268,24 @@ impl<'db> Context<'db> {
         ))
     }
 
-    /// This must be called at the end of arguments validation. It will report errors for each argument that was not used by the validators. The Drop impl will helpfully panic
-    /// otherwise.
+    /// This must be called at the end of arguments validation. It will report errors for each
+    /// argument that was not used by the validators.
     pub(crate) fn validate_visited_arguments(&mut self) {
-        let attr = if let Some(attrid) = self.attributes.attribute {
-            &self.ast[attrid]
+        let attr_id = if let Some(attr_id) = self.attributes.attribute {
+            attr_id
         } else {
             panic!("State error: missing attribute in validate_visited_arguments.")
         };
 
-        let diagnostics = &mut self.diagnostics;
         for arg_idx in self.attributes.args.values() {
-            let arg = &attr.arguments.arguments[*arg_idx];
-            diagnostics.push_error(DatamodelError::new_unused_argument_error(
-                arg.name.as_ref().map(|n| n.name.as_str()).unwrap_or(""),
-                arg.span,
-            ));
+            self.types.unknown_attribute_arguments.push((attr_id, *arg_idx));
         }
 
         self.discard_arguments();
     }
 
     /// Counterpart to visit_attributes(). This must be called at the end of the validation of the
-    /// attribute set. The Drop impl will helpfully panic otherwise.
+    /// attribute set.
     pub(crate) fn validate_visited_attributes(&mut self) {
         if !self.attributes.args.is_empty() || self.attributes.attribute.is_some() {
             panic!("State error: validate_visited_attributes() when an attribute is still under validation.");

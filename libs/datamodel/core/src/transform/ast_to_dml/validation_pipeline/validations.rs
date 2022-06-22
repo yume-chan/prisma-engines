@@ -38,6 +38,8 @@ pub(super) fn validate(ctx: &mut Context<'_>) {
     // Model validations
     ctx.connector
         .validate_scalar_field_unknown_default_functions(ctx.db, ctx.diagnostics);
+    ctx.connector
+        .validate_unknown_attribute_arguments(ctx.db, ctx.diagnostics);
 
     for model in db.walk_models() {
         models::has_a_strict_unique_criteria(model, ctx);

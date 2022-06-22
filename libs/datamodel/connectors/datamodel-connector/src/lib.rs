@@ -111,6 +111,21 @@ pub trait Connector: Send + Sync {
         }
     }
 
+    fn validate_unknown_attribute_arguments(
+        &self,
+        db: &parser_database::ParserDatabase,
+        diagnostics: &mut Diagnostics,
+    ) {
+        for (attr_id, arg_idx) in db.walk_unknown_attribute_arguments() {
+            let attribute = &db.ast()[attr_id];
+            let argument = &attribute.arguments.arguments[arg_idx];
+            diagnostics.push_error(DatamodelError::new_unused_argument_error(
+                argument.name.as_ref().map(|n| n.name.as_str()).unwrap_or(""),
+                argument.span,
+            ));
+        }
+    }
+
     /// The scopes in which a constraint name should be validated. If empty, doesn't check for name
     /// clashes in the validation phase.
     fn constraint_violation_scopes(&self) -> &'static [ConstraintScope] {

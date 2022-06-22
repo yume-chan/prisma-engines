@@ -867,12 +867,6 @@ fn relation_attribute_on_a_composite_field_errors() {
         [1;94m12 | [0m            id Int @id
         [1;94m13 | [0m            addres Address? @[1;91mrelation("TestAddress")[0m
         [1;94m   | [0m
-        [1;91merror[0m: [1mNo such argument.[0m
-          [1;94m-->[0m  [4mschema.prisma:13[0m
-        [1;94m   | [0m
-        [1;94m12 | [0m            id Int @id
-        [1;94m13 | [0m            addres Address? @relation([1;91m"TestAddress"[0m)
-        [1;94m   | [0m
     "#]];
 
     expect.assert_eq(&datamodel::parse_schema(schema).map(drop).unwrap_err());

@@ -44,6 +44,7 @@ pub use value_validator::{ValueListValidator, ValueValidator};
 use self::{context::Context, interner::StringId, relations::Relations, types::Types};
 use diagnostics::{DatamodelError, Diagnostics};
 use names::Names;
+use std::any::Any;
 
 /// ParserDatabase is a container for a Schema AST, together with information
 /// gathered during schema validation. Each validation step enriches the
@@ -70,6 +71,8 @@ pub struct ParserDatabase {
     _names: Names,
     types: Types,
     relations: Relations,
+    /// Where datamodel connectors store connector-specific information.
+    connector_extensions: Box<dyn Any + Send + Sync + 'static>,
 }
 
 impl ParserDatabase {
@@ -92,6 +95,7 @@ impl ParserDatabase {
                 _names: names,
                 types,
                 relations,
+                connector_extensions: Box::new(()),
             };
         }
 
@@ -106,6 +110,7 @@ impl ParserDatabase {
                 _names: names,
                 types,
                 relations,
+                connector_extensions: Box::new(()),
             };
         }
 
@@ -123,12 +128,34 @@ impl ParserDatabase {
             _names: names,
             types,
             relations,
+            connector_extensions: Box::new(()),
         }
     }
 
     /// The parsed AST.
     pub fn ast(&self) -> &ast::SchemaAst {
         &self.ast
+    }
+
+    /// Access the connector-specific data stored in the database.
+    pub fn connector_extensions<T>(&self) -> &T
+    where
+        T: Any + Send + Sync + 'static,
+    {
+        self.connector_extensions.downcast_ref().unwrap()
+    }
+
+    /// Access the connector-specific data stored in the database.
+    pub fn connector_extensions_mut<T>(&mut self) -> &mut T
+    where
+        T: Any + Send + Sync + Default + 'static,
+    {
+        if !self.connector_extensions.is::<T>() {
+            let default_t = T::default();
+            self.connector_extensions = Box::new(default_t);
+        }
+
+        self.connector_extensions.downcast_mut().unwrap()
     }
 
     /// The total number of models.
