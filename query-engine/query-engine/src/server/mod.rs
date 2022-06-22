@@ -189,7 +189,7 @@ async fn graphql_handler(state: State, req: Request<Body>) -> Result<Response<Bo
     }
 
     let cx = get_parent_span_context(&req);
-    let span = tracing::span!(Level::TRACE, "graphql_handler");
+    let span = info_span!("prisma:engine", user_facing = true);
     span.set_parent(cx);
 
     let tx_id = get_transaction_id_from_header(&req);
