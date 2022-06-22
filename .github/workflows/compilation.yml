@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
     runs-on: buildjet-16vcpu-ubuntu-2004
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - run: "cargo clean && cargo build --release -p introspection-core"
         name: "Compile Introspection Engine"
