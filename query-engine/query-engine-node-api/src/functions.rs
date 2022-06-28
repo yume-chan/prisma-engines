@@ -103,3 +103,6 @@ pub fn debug_panic(panic_message: Option<String>) -> napi::Result<()> {
 
     Err(napi::Error::from_reason(message))
 }
+
+#[napi]
+pub async fn do_nothing_globally() {}

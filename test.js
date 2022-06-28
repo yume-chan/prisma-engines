@@ -1,4 +1,4 @@
-const { QueryEngine } = require('./target/release/libquery_engine.dylib.node')
+const { QueryEngine, doNothingGlobally } = require('./target/release/libquery_engine.dylib.node')
 
 ;(async () => {
   for (let i = 0; i < 50; i++) {
@@ -19,7 +19,7 @@ const { QueryEngine } = require('./target/release/libquery_engine.dylib.node')
         logLevel: 'error',
         configDir: '.'
       }, () => {})
-      await qe.doNothing()
+      await doNothingGlobally()
       qe.destroy()
     }
     console.log(`batch ${i} took ${performance.now() - start} ms`)
