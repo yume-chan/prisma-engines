@@ -322,10 +322,10 @@ services:
       - databases
 
   otel:
-    image: jaegertracing/opentelemetry-all-in-one:1.35
+    image: jaegertracing/opentelemetry-all-in-one:latest
     environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
     ports:
       - 6831:6831/udp
       - 6832:6832/udp

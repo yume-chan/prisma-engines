@@ -1,6 +1,7 @@
 use crate::{error::ApiError, logger::Logger};
 use datamodel::{common::preview_features::PreviewFeature, dml::Datamodel, ValidatedConfiguration};
 use futures::FutureExt;
+use opentelemetry::{propagation::TextMapPropagator, sdk::propagation::TraceContextPropagator, trace::TraceContextExt};
 use prisma_models::InternalDataModelBuilder;
 use query_core::{
     executor,
@@ -13,12 +14,14 @@ use serde_json::json;
 use std::{
     collections::{BTreeMap, HashMap},
     future::Future,
+    hash::Hash,
     panic::AssertUnwindSafe,
     path::PathBuf,
     sync::Arc,
 };
 use tokio::sync::RwLock;
-use tracing::instrument::WithSubscriber;
+use tracing::{instrument::WithSubscriber, Instrument, Level};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::filter::LevelFilter;
 use user_facing_errors::Error;
 
@@ -295,14 +298,20 @@ impl QueryEngine {
 
             let query = serde_json::from_str(&body)?;
             let trace: HashMap<String, String> = serde_json::from_str(&trace)?;
+            let parent_context =
+                opentelemetry::global::get_text_map_propagator(|propagator| propagator.extract(&trace));
 
             let dispatcher = self.logger.dispatcher();
 
             async move {
-                let trace_id = trace.get("traceparent").map(String::from);
+                let span = tracing::info_span!("prisma:engine", user_facing = true);
+                span.set_parent(parent_context);
                 let handler = GraphQlHandler::new(engine.executor(), engine.query_schema());
-
-                let response = handler.handle(query, tx_id.map(TxId::from), trace_id).await;
+                let trace_id = trace.get("traceparent").map(String::from);
+                let response = handler
+                    .handle(query, tx_id.map(TxId::from), trace_id)
+                    .instrument(span)
+                    .await;
 
                 Ok(serde_json::to_string(&response)?)
             }
