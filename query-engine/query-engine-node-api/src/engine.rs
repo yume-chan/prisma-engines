@@ -457,6 +457,9 @@ impl QueryEngine {
     }
 
     #[napi]
+    pub async fn do_nothing(&self) {}
+
+    #[napi]
     pub fn destroy(&mut self) -> napi::Result<()> {
         self.inner = EngineWrapper::DestroyedEngine;
 
