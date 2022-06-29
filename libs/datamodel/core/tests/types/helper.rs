@@ -11,9 +11,8 @@ pub fn test_native_types_compatibility(datamodel: &str, error_msg: &str, datasou
         datamodel = datamodel,
     );
 
-    let error = parse_error(&dml);
-
-    error.assert_is_message(error_msg);
+    let error = parse_error(dml);
+    assert_eq!(&error, error_msg);
 }
 
 pub fn test_native_types_with_field_attribute_support(

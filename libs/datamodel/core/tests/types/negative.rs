@@ -1,5 +1,4 @@
 use crate::common::*;
-use datamodel::{ast, diagnostics::DatamodelError};
 
 #[test]
 fn should_fail_on_native_type_with_invalid_datasource_name() {
@@ -15,12 +14,9 @@ fn should_fail_on_native_type_with_invalid_datasource_name() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_is(DatamodelError::new(
-        "The prefix pg is invalid. It must be equal to the name of an existing datasource e.g. db. Did you mean to use db.Integer?".into(),
-        ast::Span::new(178, 188),
-    ));
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -38,12 +34,9 @@ fn should_fail_on_native_type_with_invalid_number_of_arguments() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_is(DatamodelError::new(
-        "Native type VarChar takes 1 optional arguments, but received 3.".into(),
-        ast::Span::new(216, 235),
-    ));
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -61,12 +54,9 @@ fn should_fail_on_native_type_with_unknown_type() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_is(DatamodelError::new(
-        "Native type Numerical is not supported for postgresql connector.".into(),
-        ast::Span::new(178, 196),
-    ));
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -84,26 +74,9 @@ fn should_fail_on_native_type_with_incompatible_type() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_length(2);
-
-    error.assert_is_at(
-        0,
-        DatamodelError::new(
-            "Native type VarChar is not compatible with declared field type Boolean, expected field type String."
-                .into(),
-            ast::Span::new(179, 192),
-        ),
-    );
-
-    error.assert_is_at(
-        1,
-        DatamodelError::new(
-            "Native type BigInt is not compatible with declared field type Int, expected field type BigInt.".into(),
-            ast::Span::new(214, 223),
-        ),
-    );
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -128,6 +101,7 @@ fn should_fail_on_native_type_with_invalid_arguments() {
         [1;94m 9 | [0m            foobar String @[1;91mpg.VarChar(a)[0m
         [1;94m   | [0m
     "#]];
+
     expect_error(dml, &expected)
 }
 
@@ -148,18 +122,9 @@ fn should_fail_on_native_type_in_unsupported_postgres() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_are(&[
-        DatamodelError::new_validation_error(
-        "The type `Unsupported(\"Decimal(10,2)\")` you specified in the type definition for the field `decimal` is supported as a native type by Prisma. Please use the native type notation `Decimal @pg.Decimal(10,2)` for full support.".to_owned(),
-        ast::Span::new(172, 217),
-    ),
-        DatamodelError::new_validation_error(
-            "The type `Unsupported(\"Text\")` you specified in the type definition for the field `text` is supported as a native type by Prisma. Please use the native type notation `String @pg.Text` for full support.".to_owned(),
-            ast::Span::new(229, 265),
-        )
-    ]);
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -177,18 +142,9 @@ fn should_fail_on_native_type_in_unsupported_mysql() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_are(&[
-        DatamodelError::new_validation_error(
-            "The type `Unsupported(\"Text\")` you specified in the type definition for the field `text` is supported as a native type by Prisma. Please use the native type notation `String @pg.Text` for full support.".to_owned(),
-            ast::Span::new(160, 192),
-        ),
-        DatamodelError::new_validation_error(
-            "The type `Unsupported(\"Float\")` you specified in the type definition for the field `decimal` is supported as a native type by Prisma. Please use the native type notation `Float @pg.Float` for full support.".to_owned(),
-            ast::Span::new(204, 237),
-        )
-    ]);
+    expected.assert_eq(&parse_error(dml));
 }
 
 #[test]
@@ -207,16 +163,7 @@ fn should_fail_on_native_type_in_unsupported_sqlserver() {
         }
     "#;
 
-    let error = parse_error(dml);
+    let expected = expect![[""]];
 
-    error.assert_are(&[
-        DatamodelError::new_validation_error(
-            "The type `Unsupported(\"Text\")` you specified in the type definition for the field `text` is supported as a native type by Prisma. Please use the native type notation `String @pg.Text` for full support.".to_owned(),
-            ast::Span::new(168, 200),
-        ),
-        DatamodelError::new_validation_error(
-            "The type `Unsupported(\"Real\")` you specified in the type definition for the field `decimal` is supported as a native type by Prisma. Please use the native type notation `Float @pg.Real` for full support.".to_owned(),
-            ast::Span::new(212, 244),
-        )
-    ]);
+    expected.assert_eq(&parse_error(dml));
 }

@@ -113,7 +113,7 @@ fn xml_should_work_with_string_scalar_type() {
         datasource = POSTGRES_SOURCE
     );
 
-    let datamodel = parse(&dml);
+    let datamodel = parse(dml);
     let user_model = datamodel.assert_has_model("Blog");
     let sft = user_model.assert_has_scalar_field("dec").assert_native_type();
 

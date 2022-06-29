@@ -102,7 +102,7 @@ fn should_fail_on_native_type_decimal_when_scale_is_bigger_than_precision() {
     "#};
 
     let dml = with_header(dml, Provider::SqlServer, &[]);
-    let error = datamodel::parse_schema(&dml).map(drop).unwrap_err();
+    let error = datamodel::parse_schema(dml).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
         [1;91merror[0m: [1mThe scale must not be larger than the precision for the Decimal(2,4) native type in SQL Server.[0m
@@ -171,7 +171,7 @@ fn should_fail_on_incompatible_scalar_type_with_tiny_int() {
     "#};
 
     let dml = with_header(dml, Provider::SqlServer, &[]);
-    let error = datamodel::parse_schema(&dml).map(drop).unwrap_err();
+    let error = datamodel::parse_schema(dml).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
         [1;91merror[0m: [1mNative type Bit is not compatible with declared field type DateTime, expected field type Boolean or Int.[0m
@@ -195,7 +195,7 @@ fn should_fail_on_bad_type_params() {
     "#};
 
     let dml = with_header(dml, Provider::SqlServer, &[]);
-    let error = datamodel::parse_schema(&dml).map(drop).unwrap_err();
+    let error = datamodel::parse_schema(dml).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
         [1;91merror[0m: [1mInvalid argument for type NVarChar: Ma. Allowed values: a number or `Max`.[0m
@@ -219,7 +219,7 @@ fn should_fail_on_too_many_type_params() {
     "#};
 
     let dml = with_header(dml, Provider::SqlServer, &[]);
-    let error = datamodel::parse_schema(&dml).map(drop).unwrap_err();
+    let error = datamodel::parse_schema(dml).map(drop).unwrap_err();
 
     let expectation = expect![[r#"
         [1;91merror[0m: [1mNative type NVarChar takes 1 optional arguments, but received 2.[0m
@@ -247,7 +247,7 @@ macro_rules! test_type {
 
                     let dml = with_header(&dml, Provider::SqlServer, &[]);
 
-                    let instance = parse(&dml)
+                    let instance = parse(dml)
                         .assert_has_model("Blog")
                         .assert_has_scalar_field("x")
                         .field_type

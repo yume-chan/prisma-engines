@@ -40,7 +40,7 @@ fn text_should_not_fail_on_length_prefixed_index() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn text_should_not_fail_on_length_prefixed_unique() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn text_should_not_fail_on_length_prefixed_pk() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn bytes_should_not_fail_on_length_prefixed_index() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn bytes_should_not_fail_on_length_prefixed_unique() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn bytes_should_not_fail_on_length_prefixed_pk() {
 
     let dml = with_header(dml, Provider::Mysql, &[]);
 
-    assert!(parse_schema(&dml).is_ok());
+    assert!(parse_schema(dml).is_ok());
 }
 
 #[test]
