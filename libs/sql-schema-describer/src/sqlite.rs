@@ -392,8 +392,12 @@ impl<'a> SqlSchemaDescriber<'a> {
 
             match &mut current_foreign_key {
                 None => {
-                    let foreign_key_id =
-                        schema.push_foreign_key(None, [table_id, referenced_table_id], get_referential_actions(&row));
+                    let foreign_key_id = schema.push_foreign_key(
+                        None,
+                        [table_id, referenced_table_id],
+                        get_referential_actions(&row),
+                        [None, None],
+                    );
                     current_foreign_key = Some((id, foreign_key_id));
                 }
                 Some((sqlite_id, _)) if *sqlite_id == id => {}
@@ -401,8 +405,12 @@ impl<'a> SqlSchemaDescriber<'a> {
                     // Flush current foreign key.
                     flush_current_fk(&mut current_foreign_key, &mut current_foreign_key_columns, schema);
 
-                    let foreign_key_id =
-                        schema.push_foreign_key(None, [table_id, referenced_table_id], get_referential_actions(&row));
+                    let foreign_key_id = schema.push_foreign_key(
+                        None,
+                        [table_id, referenced_table_id],
+                        get_referential_actions(&row),
+                        [None, None],
+                    );
                     current_foreign_key = Some((id, foreign_key_id));
                 }
             }

@@ -715,6 +715,7 @@ impl<'a> SqlSchemaDescriber<'a> {
                         Some(constraint_name.clone()),
                         [table_id, referenced_table_id],
                         [on_delete_action, on_update_action],
+                        [None, None],
                     );
 
                     current_fk = Some((constraint_name, fkid));

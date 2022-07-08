@@ -193,6 +193,8 @@ pub struct ForeignKey<'a> {
     pub referenced_columns: Vec<Cow<'a, str>>,
     pub on_delete: Option<ForeignKeyAction>,
     pub on_update: Option<ForeignKeyAction>,
+    pub deferrable: Option<bool>,
+    pub initially_deferred: Option<bool>,
 }
 
 impl Display for ForeignKey<'_> {
@@ -223,6 +225,14 @@ impl Display for ForeignKey<'_> {
         if let Some(on_update) = &self.on_update {
             f.write_str(" ON UPDATE ")?;
             on_update.fmt(f)?;
+        }
+
+        if self.deferrable == Some(true) {
+            f.write_str(" DEFERRABLE")?;
+
+            if self.initially_deferred == Some(true) {
+                f.write_str(" INITIALLY DEFERRED")?;
+            }
         }
 
         Ok(())
@@ -494,6 +504,8 @@ mod tests {
                 on_update: None,
                 referenced_columns: vec!["name".into(), "temperament".into()],
                 referenced_table: "Dog".into(),
+                deferrable: None,
+                initially_deferred: None,
             })],
         };
 

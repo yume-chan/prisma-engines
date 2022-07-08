@@ -79,6 +79,30 @@ impl<'db> RelationFieldWalker<'db> {
         self.attributes().on_update.map(|(_action, span)| span)
     }
 
+    /// The deferrable argument on the relation.
+    pub fn explicit_deferrable(self) -> Option<bool> {
+        self.attributes().deferrable.map(|(deferrable, _span)| deferrable)
+    }
+
+    /// The deferrable argument on the relation.
+    pub fn explicit_deferrable_span(self) -> Option<ast::Span> {
+        self.attributes().deferrable.map(|(_deferrable, span)| span)
+    }
+
+    /// The initiallyDeferred argument on the relation.
+    pub fn explicit_initially_deferred(self) -> Option<bool> {
+        self.attributes()
+            .initially_deferred
+            .map(|(initially_deferred, _span)| initially_deferred)
+    }
+
+    /// The initiallyDeferred argument on the relation.
+    pub fn explicit_initially_deferred_span(self) -> Option<ast::Span> {
+        self.attributes()
+            .initially_deferred
+            .map(|(_initially_deferred, span)| span)
+    }
+
     /// The relation name explicitly written in the schema source.
     pub fn explicit_relation_name(self) -> Option<&'db str> {
         self.relation_field.name.map(|string_id| &self.db[string_id])

@@ -118,6 +118,10 @@ fn push_inline_relations(ctx: &mut Context<'_>) {
             Some(relation.constraint_name(ctx.flavour.datamodel_connector()).into_owned()),
             [referencing_model, referenced_model],
             [convert_referential_action(on_delete_action), on_update_action],
+            [
+                relation_field.explicit_deferrable(),
+                relation_field.explicit_initially_deferred(),
+            ],
         );
 
         let columns = relation_field
@@ -248,6 +252,7 @@ fn push_relation_tables(ctx: &mut Context<'_>) {
                 Some(model_a_fk_name),
                 [table_id, ctx.model_id_to_table_id[&model_a.model_id()]],
                 [flavour.m2m_foreign_key_action(model_a, model_b); 2],
+                [None, None],
             );
 
             ctx.schema.describer_schema.push_foreign_key_column(
@@ -267,6 +272,7 @@ fn push_relation_tables(ctx: &mut Context<'_>) {
                 Some(model_b_fk_name),
                 [table_id, ctx.model_id_to_table_id[&model_b.model_id()]],
                 [flavour.m2m_foreign_key_action(model_a, model_b); 2],
+                [None, None],
             );
 
             ctx.schema.describer_schema.push_foreign_key_column(

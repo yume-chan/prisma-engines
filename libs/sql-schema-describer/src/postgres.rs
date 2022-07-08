@@ -746,22 +746,26 @@ impl<'a> SqlSchemaDescriber<'a> {
                 att.attname     AS "parent_column",
                 con.confdeltype,
                 con.confupdtype,
-                rel_ns.nspname  AS "referenced_schema_name",
-                conname         AS constraint_name,
+                con.condeferrable,
+                con.condeferred,
+                rel_ns.nspname      as "referenced_schema_name",
+                conname             as constraint_name,
                 child,
                 parent,
                 table_name
-            FROM (SELECT unnest(con1.conkey)                 as "parent",
+            FROM (SELECT unnest(con1.conkey)                as "parent",
                         unnest(con1.confkey)                as "child",
-                        cl.relname                          AS table_name,
-                        ns.nspname                          AS schema_name,
-                        generate_subscripts(con1.conkey, 1) AS colidx,
+                        cl.relname                          as table_name,
+                        ns.nspname                          as schema_name,
+                        generate_subscripts(con1.conkey, 1) as colidx,
                         con1.oid,
                         con1.confrelid,
                         con1.conrelid,
                         con1.conname,
                         con1.confdeltype,
-                        con1.confupdtype
+                        con1.confupdtype,
+                        con1.condeferrable,
+                        con1.condeferred
                 FROM pg_class cl
                         join pg_constraint con1 on con1.conrelid = cl.oid
                         join pg_namespace ns on cl.relnamespace = ns.oid
@@ -836,6 +840,8 @@ impl<'a> SqlSchemaDescriber<'a> {
             let confupdtype = row
                 .get_char("confupdtype")
                 .unwrap_or_else(|| row.get_expect_string("confupdtype").chars().next().unwrap());
+            let condeferrable = row.get_expect_bool("condeferrable");
+            let condeferred = row.get_expect_bool("condeferred");
 
             let on_delete_action = match confdeltype {
                 'a' => ForeignKeyAction::NoAction,
@@ -861,6 +867,7 @@ impl<'a> SqlSchemaDescriber<'a> {
                         Some(constraint_name),
                         [table_id, referenced_table_id],
                         [on_delete_action, on_update_action],
+                        [Some(condeferrable), Some(condeferred)],
                     );
 
                     current_fk = Some((id, fkid));

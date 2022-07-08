@@ -104,6 +104,8 @@ impl SqlRenderer for PostgresFlavour {
                     ForeignKeyAction::SetDefault => ddl::ForeignKeyAction::SetDefault,
                     ForeignKeyAction::SetNull => ddl::ForeignKeyAction::SetNull,
                 }),
+                deferrable: foreign_key.deferrable().clone(),
+                initially_deferred: foreign_key.initially_deferred().clone(),
             })],
         }
         .to_string()

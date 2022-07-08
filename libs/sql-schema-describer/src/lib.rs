@@ -154,6 +154,7 @@ impl SqlSchema {
         constraint_name: Option<String>,
         [constrained_table, referenced_table]: [TableId; 2],
         [on_delete_action, on_update_action]: [ForeignKeyAction; 2],
+        [deferrable,initially_deferred]:[Option<bool>;2],
     ) -> ForeignKeyId {
         let id = ForeignKeyId(self.foreign_keys.len() as u32);
         self.foreign_keys.push(ForeignKey {
@@ -162,6 +163,8 @@ impl SqlSchema {
             referenced_table,
             on_delete_action,
             on_update_action,
+            deferrable,
+            initially_deferred
         });
         id
     }
@@ -581,6 +584,10 @@ struct ForeignKey {
     constraint_name: Option<String>,
     on_delete_action: ForeignKeyAction,
     on_update_action: ForeignKeyAction,
+    /// Postgres only. Deferrable.
+    deferrable: Option<bool>,
+    /// Postgres only. Initially Deferred.
+    initially_deferred: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -789,6 +789,24 @@ fn visit_relation(model_id: ast::ModelId, relation_field: &mut RelationField, ct
         }
     }
 
+    if let Some(deferrable) = ctx.visit_optional_arg("deferrable") {
+        match deferrable.as_bool() {
+            Ok(value) => {
+                relation_field.deferrable = Some((value, deferrable.span()));
+            }
+            Err(err) => ctx.push_error(err),
+        }
+    }
+
+    if let Some(initially_deferred) = ctx.visit_optional_arg("initiallyDeferred") {
+        match initially_deferred.as_bool() {
+            Ok(value) => {
+                relation_field.initially_deferred = Some((value, initially_deferred.span()));
+            }
+            Err(err) => ctx.push_error(err),
+        }
+    }
+
     let fk_name = {
         let mapped_name = match ctx.visit_optional_arg("map").map(|name| name.as_str()) {
             Some(Ok("")) => {

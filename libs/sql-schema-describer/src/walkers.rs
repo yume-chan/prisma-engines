@@ -430,6 +430,16 @@ impl<'schema> ForeignKeyWalker<'schema> {
         self.foreign_key().on_update_action
     }
 
+    /// Postgres only. The `DEFERRED` behavior of the foreign key.
+    pub fn deferrable(&self) -> Option<bool> {
+        self.foreign_key().deferrable
+    }
+
+    /// Postgres only. The `INITIALLY DEFERRED` behavior of the foreign key.
+    pub fn initially_deferred(&self) -> Option<bool> {
+        self.foreign_key().initially_deferred
+    }
+
     /// The columns referenced by the foreign key on the referenced table.
     pub fn referenced_columns(self) -> impl ExactSizeIterator<Item = ColumnWalker<'schema>> {
         self.columns().iter().map(move |col| self.walk(col.referenced_column))
