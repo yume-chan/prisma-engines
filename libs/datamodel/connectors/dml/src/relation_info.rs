@@ -20,6 +20,8 @@ pub struct RelationInfo {
     /// A strategy indicating what happens when
     /// a related node is updated.
     pub on_update: Option<ReferentialAction>,
+    pub deferrable: Option<bool>,
+    pub initially_deferrable: Option<bool>,
 }
 
 impl PartialEq for RelationInfo {
@@ -41,6 +43,8 @@ impl RelationInfo {
             fk_name: None,
             on_delete: None,
             on_update: None,
+            deferrable: None,
+            initially_deferrable: None,
         }
     }
 }

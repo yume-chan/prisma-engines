@@ -128,6 +128,8 @@ pub fn calculate_many_to_many_field(
             .collect(),
         on_delete: None,
         on_update: None,
+        deferrable: None,
+        initially_deferrable: None,
     };
 
     let basename = opposite_foreign_key.referenced_table_name();
@@ -241,6 +243,8 @@ pub(crate) fn calculate_relation_field(
         references: foreign_key.referenced_columns().map(|c| c.name().to_owned()).collect(),
         on_delete: Some(map_action(foreign_key.on_delete_action())),
         on_update: Some(map_action(foreign_key.on_update_action())),
+        deferrable: foreign_key.deferrable(),
+        initially_deferrable: foreign_key.initially_deferred(),
     };
 
     let arity = match foreign_key.constrained_columns().any(|c| !c.arity().is_required()) {
@@ -281,6 +285,8 @@ pub(crate) fn calculate_backrelation_field(
                 references: vec![],
                 on_delete: None,
                 on_update: None,
+                deferrable: None,
+                initially_deferrable: None,
             };
 
             // unique or id

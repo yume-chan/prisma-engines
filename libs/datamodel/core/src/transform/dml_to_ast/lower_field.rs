@@ -229,6 +229,20 @@ pub(crate) fn lower_field_attributes(
             }
         }
 
+        if let Some(deferrable) = relation_info.deferrable {
+            if deferrable {
+                let expression = ast::Expression::ConstantValue("true".to_owned(), ast::Span::empty());
+                args.push(ast::Argument::new("deferrable", expression));
+            }
+        }
+
+        if let Some(initially_deferred) = relation_info.initially_deferrable {
+            if initially_deferred {
+                let expression = ast::Expression::ConstantValue("true".to_owned(), ast::Span::empty());
+                args.push(ast::Argument::new("initiallyDeferred", expression));
+            }
+        }
+
         if let Some(fk_name) = &relation_info.fk_name {
             if let Some(src) = params.datasource {
                 if !super::foreign_key_name_matches(relation_info, model, &*src.active_connector) {
